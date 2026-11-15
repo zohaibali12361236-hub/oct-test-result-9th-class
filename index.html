@@ -1,0 +1,398 @@
+﻿
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Class 9 Result Portal</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,sans-serif;background:#eef2ff;color:#172554}
+header{background:linear-gradient(120deg,#172554,#4338ca);color:white;text-align:center;padding:30px 15px}
+header h1{margin-bottom:10px}
+nav{background:white;padding:14px;display:flex;justify-content:center;flex-wrap:wrap;gap:8px}
+button{background:#4338ca;color:white;border:0;padding:11px 16px;border-radius:8px;cursor:pointer;font-weight:bold;margin:4px}
+button:hover{opacity:.85}
+.container{max-width:850px;margin:25px auto;padding:12px}
+.card{background:white;padding:22px;border-radius:14px;box-shadow:0 5px 20px #00000012;margin-bottom:20px}
+h2{color:#312e81;margin-bottom:18px}
+h3{margin:15px 0}
+input,select{width:100%;padding:12px;margin:8px 0 14px;border:1px solid #cbd5e1;border-radius:8px;font-size:15px}
+label{font-weight:bold}
+table{width:100%;border-collapse:collapse;margin-top:15px}
+td,th{padding:11px;border-bottom:1px solid #ddd;text-align:left}
+th{background:#eef2ff}
+.hidden{display:none}
+.subject{background:#f8fafc;padding:12px;border-radius:9px;margin-bottom:12px}
+.subject label{display:block;margin-bottom:5px}
+.subject input,.subject select{margin-bottom:5px}
+.result{text-align:center;margin-top:20px}
+.position{background:#eef2ff;padding:15px;border-radius:10px;font-size:22px;font-weight:bold;margin:15px 0;color:#4338ca}
+.danger{background:#dc2626}
+footer{text-align:center;padding:20px;color:#64748b}
+@media(max-width:500px){td,th{padding:7px;font-size:13px}.card{padding:14px}}
+@media print{
+ header,nav,footer,.no-print,#home>.no-print{display:none!important}
+ body{background:white}
+ .container{margin:0;padding:0}
+ .card{box-shadow:none;border:0}
+}
+</style>
+</head>
+<body>
+
+<header>
+<h1>🎓 Class 9 Result Portal</h1>
+<p>Your Class • Your Future</p>
+</header>
+
+<nav>
+<button onclick="showPage('home')">Home</button>
+<button onclick="showPage('admin')">Admin Panel</button>
+<button onclick="showPage('merit')">🏆 Merit List</button>
+</nav>
+
+<div class="container">
+
+<section id="home" class="card">
+<h2>🔍 Check Student Result</h2>
+<div class="no-print">
+<label>Roll Number</label>
+<input id="searchRoll" placeholder="Enter student roll number">
+<button onclick="checkResult()">Check Result</button>
+</div>
+<div id="result" class="result"></div>
+</section>
+
+<section id="admin" class="card hidden">
+<h2>🔐 Admin Panel</h2>
+
+<div id="login">
+<label>Admin Password</label>
+<input type="password" id="password" placeholder="Password">
+<button onclick="login()">Login</button>
+</div>
+
+<div id="dashboard" class="hidden">
+<h3>Add Student</h3>
+
+<label>Student Name</label>
+<input id="studentName" placeholder="Student name">
+
+<label>Roll Number</label>
+<input id="roll" placeholder="Roll number">
+
+<h3>Enter Subject Marks</h3>
+<div id="marksInputs"></div>
+
+<button onclick="addStudent()">Save Student Result</button>
+
+<hr style="margin:20px 0">
+
+<h3>Saved Students</h3>
+<div id="studentList"></div>
+
+<button class="danger" onclick="logout()">Logout</button>
+</div>
+</section>
+
+<section id="merit" class="card hidden">
+<h2>🏆 Class Merit List</h2>
+<div id="meritList"></div>
+</section>
+
+</div>
+
+<footer>
+<p>© 2026 Class 9 Result Portal</p>
+<p>Made for Students ❤️</p>
+</footer>
+
+<script>
+
+const subjects=[
+ {name:"English",total:60},
+ {name:"Tarjuma-tul-Quran",total:40},
+ {name:"Physics",total:25},
+ {name:"Mathematics",total:40},
+ {name:"Chemistry",total:40},
+ {name:"Islamiat",total:58}
+];
+
+const grandTotal=263;
+
+let students=[];
+try{
+ students=JSON.parse(localStorage.getItem("class9students")||"[]");
+ if(!Array.isArray(students))students=[];
+}catch(e){students=[];}
+
+function saveData(){
+ try{
+  localStorage.setItem("class9students",JSON.stringify(students));
+  return true;
+ }catch(e){
+  alert("Data save nahi ho saka. Browser storage check karein.");
+  return false;
+ }
+}
+
+function getTotal(s){
+ return subjects.reduce((sum,sub)=>{
+  return sum+(s.marks[sub.name].status==="Present"?Number(s.marks[sub.name].value):0);
+ },0);
+}
+
+function showPage(page){
+ ["home","admin","merit"].forEach(id=>{
+  document.getElementById(id).classList.add("hidden");
+ });
+ document.getElementById(page).classList.remove("hidden");
+ if(page==="merit")showMerit();
+}
+
+function createInputs(){
+ const box=document.getElementById("marksInputs");
+ box.innerHTML="";
+
+ subjects.forEach((s,i)=>{
+  let div=document.createElement("div");
+  div.className="subject";
+
+  let label=document.createElement("label");
+  label.textContent=s.name+" (Total "+s.total+")";
+
+  let status=document.createElement("select");
+  status.id="status"+i;
+  status.innerHTML='<option value="Present">Present</option><option value="Absent">Absent</option>';
+
+  let marks=document.createElement("input");
+  marks.type="number";
+  marks.id="mark"+i;
+  marks.min="0";
+  marks.max=s.total;
+  marks.placeholder="Obtained marks out of "+s.total;
+
+  status.onchange=()=>{
+   marks.disabled=status.value==="Absent";
+   marks.value="";
+  };
+
+  div.appendChild(label);
+  div.appendChild(status);
+  div.appendChild(marks);
+  box.appendChild(div);
+ });
+}
+
+createInputs();
+
+function login(){
+ if(document.getElementById("password").value==="1234"){
+  document.getElementById("login").classList.add("hidden");
+  document.getElementById("dashboard").classList.remove("hidden");
+  showStudents();
+ }else{
+  alert("Wrong password!");
+ }
+}
+
+function logout(){
+ document.getElementById("dashboard").classList.add("hidden");
+ document.getElementById("login").classList.remove("hidden");
+ document.getElementById("password").value="";
+}
+
+function addStudent(){
+ let name=document.getElementById("studentName").value.trim();
+ let roll=document.getElementById("roll").value.trim();
+
+ if(!name||!roll){
+  alert("Name aur roll number enter karein!");
+  return;
+ }
+
+ let marks={};
+ let valid=true;
+
+ subjects.forEach((s,i)=>{
+  let status=document.getElementById("status"+i).value;
+  let value=document.getElementById("mark"+i).value;
+
+  if(status==="Present"){
+   if(value===""||Number(value)<0||Number(value)>s.total){
+    valid=false;
+   }
+  }
+
+  marks[s.name]={
+   status:status,
+   value:status==="Present"?Number(value):0
+  };
+ });
+
+ if(!valid){
+  alert("Marks sahi enter karein. Absent subject ko Absent select karein.");
+  return;
+ }
+
+ let oldStudents=[...students];
+
+ students=students.filter(s=>s.roll!==roll);
+ students.push({name,roll,marks});
+
+ if(!saveData()){
+  students=oldStudents;
+  return;
+ }
+
+ showStudents();
+ alert("Student result saved successfully!");
+
+ document.getElementById("studentName").value="";
+ document.getElementById("roll").value="";
+
+ subjects.forEach((s,i)=>{
+  document.getElementById("status"+i).value="Present";
+  document.getElementById("mark"+i).value="";
+  document.getElementById("mark"+i).disabled=false;
+ });
+}
+
+function showStudents(){
+ let box=document.getElementById("studentList");
+ box.innerHTML="";
+
+ if(students.length===0){
+  box.textContent="No students added yet.";
+  return;
+ }
+
+ students.forEach(s=>{
+  let row=document.createElement("p");
+  row.style.padding="10px";
+  row.style.borderBottom="1px solid #ddd";
+  row.textContent=s.name+" | Roll: "+s.roll+" | Marks: "+getTotal(s)+"/263 ";
+
+  let del=document.createElement("button");
+  del.textContent="Delete";
+  del.className="danger";
+
+  del.onclick=()=>{
+   if(confirm("Delete this student result?")){
+    let oldStudents=[...students];
+    students=students.filter(x=>x.roll!==s.roll);
+    if(!saveData())students=oldStudents;
+    showStudents();
+   }
+  };
+
+  row.appendChild(del);
+  box.appendChild(row);
+ });
+}
+
+function getPosition(student){
+ let total=getTotal(student);
+ let higher=students.filter(s=>getTotal(s)>total).length;
+ return higher+1;
+}
+
+function showMerit(){
+ let box=document.getElementById("meritList");
+ box.innerHTML="";
+
+ if(students.length===0){
+  box.textContent="Abhi koi student add nahi hua.";
+  return;
+ }
+
+ let sorted=[...students].sort((a,b)=>getTotal(b)-getTotal(a));
+
+ let table=document.createElement("table");
+ table.innerHTML="<tr><th>Position</th><th>Name</th><th>Roll No.</th><th>Marks</th></tr>";
+
+ sorted.forEach(s=>{
+  let position=getPosition(s);
+  let rank=position===1?"🥇 1st":position===2?"🥈 2nd":position===3?"🥉 3rd":position+"th";
+
+  let tr=document.createElement("tr");
+  [rank,s.name,s.roll,getTotal(s)+"/263"].forEach(value=>{
+   let td=document.createElement("td");
+   td.textContent=value;
+   tr.appendChild(td);
+  });
+  table.appendChild(tr);
+ });
+
+ box.appendChild(table);
+}
+
+function checkResult(){
+ let roll=document.getElementById("searchRoll").value.trim();
+ let student=students.find(s=>s.roll===roll);
+ let box=document.getElementById("result");
+ box.innerHTML="";
+
+ if(!student){
+  box.textContent="Result not found! Roll number check karein.";
+  return;
+ }
+
+ let total=getTotal(student);
+ let percentage=(total/grandTotal*100).toFixed(2);
+ let position=getPosition(student);
+
+ let heading=document.createElement("h2");
+ heading.textContent="🎓 Student Result";
+ box.appendChild(heading);
+
+ let info=document.createElement("p");
+ info.textContent="Name: "+student.name+" | Roll Number: "+student.roll;
+ box.appendChild(info);
+
+ let rank=document.createElement("div");
+ rank.className="position";
+ rank.textContent="🏆 Class Position: "+position;
+ box.appendChild(rank);
+
+ let table=document.createElement("table");
+ table.innerHTML="<tr><th>Subject</th><th>Obtained</th><th>Total</th></tr>";
+
+ subjects.forEach(s=>{
+  let tr=document.createElement("tr");
+  let values=[
+   s.name,
+   student.marks[s.name].status==="Absent"?"ABSENT":student.marks[s.name].value,
+   s.total
+  ];
+
+  values.forEach(value=>{
+   let td=document.createElement("td");
+   td.textContent=value;
+   tr.appendChild(td);
+  });
+
+  table.appendChild(tr);
+ });
+
+ box.appendChild(table);
+
+ let summary=document.createElement("h3");
+ summary.textContent="Total Marks: "+total+" / 263";
+ box.appendChild(summary);
+
+ let percent=document.createElement("p");
+ percent.textContent="Percentage: "+percentage+"%";
+ box.appendChild(percent);
+
+ let print=document.createElement("button");
+ print.textContent="🖨 Print Result Card";
+ print.className="no-print";
+ print.onclick=()=>window.print();
+ box.appendChild(print);
+}
+
+</script>
+</body>
+</html>
